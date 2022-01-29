@@ -5,12 +5,16 @@ using UnityEngine.InputSystem;
 
 public class PlayerController : MonoBehaviour
 {
+    //Input from player
     private PlayerInput playerInput;
 
+    //Switching variables
     public PlayerSwitchingManager switchingManager;
-    private bool canSwitch = true;
+    public bool canSwitch = true;
     private bool wantToSwitch = false;
+    public bool turn;
 
+    //Make sure start only gets called once
     private bool started = false;
 
     //Store our controls
@@ -20,16 +24,37 @@ public class PlayerController : MonoBehaviour
     private InputAction lightAttack;
     private InputAction heavyAttack;
 
+
+    //Rigidbody of player
     private Rigidbody2D rb;
 
+    //Movement modifiers
     public float jumpForce;
     public float movementModifier;
 
     public float inputX;
 
-    private CircleCollider2D groundCheck;
+    //private CircleCollider2D groundCheck;
     private bool onGround;
 
+    //Player health
+    private int maxHealth;
+    public int health;
+    public bool isDead;
+    public float hit;
+    public bool canMove = true;
+
+    //Knockback
+    private float knockBack;
+    public bool hitFromRight;
+    private bool hitGroundAfterHit = true;
+
+    //Animation
+    private Animator playerAnimator;
+    public bool facingRight = true;
+    public bool dontFlip = false;
+
+    #region Movement
     private void Awake()
     {
         playerInput = GetComponent<PlayerInput>();
@@ -41,6 +66,10 @@ public class PlayerController : MonoBehaviour
 
     private void Start()
     {
+        maxHealth = health;
+
+        playerAnimator = GetComponent<Animator>();
+
         started = true;
         jumpAction.performed += Jump;
         switchAction.performed += Switch;
@@ -58,14 +87,11 @@ public class PlayerController : MonoBehaviour
         }
 
         moveAction = playerInput.actions["Move"];
+        moveAction.canceled += StopMoving;
         jumpAction.performed += Jump;
         switchAction.performed += Switch;
         lightAttack.performed += LightAttack;
         heavyAttack.performed += HeavyAttack;
-
-        inputX = moveAction.ReadValue<Vector2>().x;
-
-        Update();
     }
 
     private void OnDisable()
@@ -80,7 +106,6 @@ public class PlayerController : MonoBehaviour
     {
         if (onGround)
         {
-            Debug.Log("Jump");
             rb.velocity = new Vector2(rb.velocity.x, 0);
             rb.AddForce(transform.up * jumpForce, ForceMode2D.Impulse);
         }
@@ -88,11 +113,12 @@ public class PlayerController : MonoBehaviour
 
     private void Switch(InputAction.CallbackContext context)
     {
-        if(canSwitch)
+        if(turn && canSwitch)
         {
+            Debug.Log("Switch");
             switchingManager.Switch();
         }
-        else
+        else if(turn)
         {
             wantToSwitch = true;
         }
@@ -100,27 +126,98 @@ public class PlayerController : MonoBehaviour
 
     private void LightAttack(InputAction.CallbackContext context)
     {
-
+        
     }
 
     private void HeavyAttack(InputAction.CallbackContext context)
     {
+        if (hitGroundAfterHit)
+        {
+            canSwitch = false;
+            canMove = false;
 
+            rb.velocity = Vector2.zero;
+
+            playerAnimator.SetTrigger("HeavyAttack");
+        }
     }
 
     public void Move(InputAction.CallbackContext context)
     {
         inputX = context.ReadValue<Vector2>().x;
+
+        playerAnimator.SetFloat("Speed", Mathf.Abs(inputX));
+    }
+
+    public void StopMoving(InputAction.CallbackContext context)
+    {
+        //rb.velocity = new Vector2(0, rb.velocity.y);
     }
 
     private void Update()
     {
-        rb.velocity = new Vector2(inputX * movementModifier, rb.velocity.y);
+        if(!dontFlip)
+        {
+            if (rb.velocity.x > 0 && !facingRight)
+            {
+                Flip();
+            }
+            else if (rb.velocity.x < 0 && facingRight)
+            {
+                Flip();
+            }
+        }
+
+        if (hit <= 0 && hitGroundAfterHit && canMove)
+        {
+            rb.velocity = new Vector2(inputX * movementModifier, rb.velocity.y);
+        }
+        else if (hit > 0)
+        {
+            rb.velocity = Vector2.zero;
+            if (hitFromRight)
+            {
+                if (!facingRight)
+                {
+                    dontFlip = true;
+                    Flip();
+                }
+                rb.AddForce(new Vector2(-knockBack, knockBack), ForceMode2D.Impulse);
+                //rb.velocity = new Vector2(-knockBack, knockBack);
+            }
+            else
+            {
+                if (facingRight)
+                {
+                    dontFlip = true;
+                    Flip();
+                }
+                rb.AddForce(new Vector2(knockBack, knockBack), ForceMode2D.Impulse);
+                //rb.velocity = new Vector2(knockBack, knockBack);
+            }
+            hit -= Time.deltaTime;
+        }
 
         if(canSwitch && wantToSwitch)
         {
+            Debug.Log("Update Switch");
             wantToSwitch = false;
             switchingManager.Switch();
+        }
+    }
+
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        if(collision.gameObject.tag == "Ground")
+        {
+            if (!hitGroundAfterHit)
+            {
+                canSwitch = true;
+                hitGroundAfterHit = true;
+                rb.velocity = Vector2.zero;
+                playerAnimator.SetBool("Hit", false);
+                dontFlip = false;
+            }
         }
     }
 
@@ -140,13 +237,103 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    public void setInputX(float newInput)
+    public void SetTurn()
     {
-        inputX = newInput;
+        turn = true;
     }
 
-    public float getInputX()
+    public void SetNotTurn()
     {
-        return inputX;
+        turn = false;
+    }
+
+    #endregion
+
+    public void changeHealth(int changeBy, bool isDamage, Vector2 positionOfDamageSource, float knockBack)
+    {
+        if (isDamage)
+        {
+            health -= changeBy;
+            if (health <= 0)
+            {
+                Die();
+            }
+            else
+            {
+                this.knockBack = knockBack;
+                if (positionOfDamageSource.x < transform.position.x)
+                {
+                    hitFromRight = false;
+                }
+                else
+                {
+                    hitFromRight = true;
+                }
+            }
+        }
+        else
+        {
+            health += changeBy;
+            if (health >= maxHealth)
+            {
+                health = maxHealth;
+            }
+        }
+        
+        
+    }
+
+    public void Die()
+    {
+        isDead = true;
+        switchingManager.Switch();
+    }
+    
+    public bool getIsDead()
+    {
+        return isDead;
+    }
+
+    public void isHit(float hitLength)
+    {
+        Debug.Log("Hit");
+
+        hit = hitLength;
+        hitGroundAfterHit = false;
+        canSwitch = false;
+        playerAnimator.SetBool("Hit", true);
+    }
+
+    public void setFacingRight(bool facingRight)
+    {
+        this.facingRight = facingRight;
+    }
+
+    public void setDontFlip(bool dontFlip)
+    {
+        this.dontFlip = dontFlip;
+    }
+
+    public bool getFacingRight()
+    {
+        return facingRight;
+    }
+
+    public bool getDontFlip()
+    {
+        return dontFlip;
+    }
+
+    public void Flip()
+    {
+        //Debug.Log("Flip");
+        facingRight = !facingRight;
+        transform.localScale = new Vector3(-1 * transform.localScale.x, transform.localScale.y, transform.localScale.z);
+    }
+
+    public void CanMove()
+    {
+        canMove = true;
+        canSwitch = true;
     }
 }
