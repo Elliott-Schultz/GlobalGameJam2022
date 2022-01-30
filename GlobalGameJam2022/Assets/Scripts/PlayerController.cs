@@ -158,21 +158,6 @@ public class PlayerController : MonoBehaviour
         rb.AddForce(new Vector2(0, 2 * -jumpForce), ForceMode2D.Impulse);
     }
 
-    public void heavyDash()
-    {
-        Debug.Log("Dash");
-        canMove = false;
-        rb.velocity = Vector2.zero;
-        if (facingRight)
-        {
-            rb.AddForce(new Vector2(2 * jumpForce, 0), ForceMode2D.Impulse);
-        }
-        else
-        {
-            rb.AddForce(new Vector2( 2 * -jumpForce, 0), ForceMode2D.Impulse);
-        }
-    }
-
     public void Move(InputAction.CallbackContext context)
     {
         inputX = context.ReadValue<Vector2>().x;
@@ -241,14 +226,21 @@ public class PlayerController : MonoBehaviour
     {
         if(collision.gameObject.tag == "Ground")
         {
-            playerAnimator.SetBool("OnGround", true);
-            if (!hitGroundAfterHit)
+            if (health <= 0)
             {
-                canSwitch = true;
-                hitGroundAfterHit = true;
-                rb.velocity = Vector2.zero;
-                playerAnimator.SetBool("Hit", false);
-                dontFlip = false;
+                Die();
+            }
+            else
+            {
+                playerAnimator.SetBool("OnGround", true);
+                if (!hitGroundAfterHit)
+                {
+                    canSwitch = true;
+                    hitGroundAfterHit = true;
+                    rb.velocity = Vector2.zero;
+                    playerAnimator.SetBool("Hit", false);
+                    dontFlip = false;
+                }
             }
         }
     }
@@ -283,17 +275,13 @@ public class PlayerController : MonoBehaviour
 
     public void changeHealth(int changeBy, bool isDamage, Vector2 positionOfDamageSource, float knockBack)
     {
-        if (isDamage)
+        if (isDamage && hitGroundAfterHit)
         {
             playerAnimator.SetBool("HeavyAttack", false);
             playerAnimator.SetBool("AirAttack", false);
 
             health -= changeBy;
-            if (health <= 0)
-            {
-                Die();
-            }
-            else
+            if(health > 0)
             {
                 this.knockBack = knockBack;
                 if (positionOfDamageSource.x < transform.position.x)
@@ -306,7 +294,7 @@ public class PlayerController : MonoBehaviour
                 }
             }
         }
-        else
+        else if(!isDamage)
         {
             health += changeBy;
             if (health >= maxHealth)
@@ -331,12 +319,13 @@ public class PlayerController : MonoBehaviour
 
     public void isHit(float hitLength)
     {
-        Debug.Log("Hit");
-
-        hit = hitLength;
-        hitGroundAfterHit = false;
-        canSwitch = false;
-        playerAnimator.SetBool("Hit", true);
+        if (hitGroundAfterHit)
+        {
+            hit = hitLength;
+            hitGroundAfterHit = false;
+            canSwitch = false;
+            playerAnimator.SetBool("Hit", true);
+        }
     }
 
     public void setFacingRight(bool facingRight)
@@ -361,7 +350,7 @@ public class PlayerController : MonoBehaviour
 
     public void Flip()
     {
-        //Debug.Log("Flip");
+        Debug.Log("Flip");
         facingRight = !facingRight;
         transform.localScale = new Vector3(-1 * transform.localScale.x, transform.localScale.y, transform.localScale.z);
     }
@@ -373,5 +362,15 @@ public class PlayerController : MonoBehaviour
 
         canMove = true;
         canSwitch = true;
+    }
+
+    public bool getHitGroundAfterHit()
+    {
+        return hitGroundAfterHit;
+    }
+
+    public void setHitGroundAfterHit(bool newHitGroundAfterHit)
+    {
+        hitGroundAfterHit = newHitGroundAfterHit;
     }
 }

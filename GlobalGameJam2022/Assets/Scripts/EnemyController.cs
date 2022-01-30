@@ -153,8 +153,8 @@ public class EnemyController : MonoBehaviour
                 facingRight = false;
             }
 
-            collision.gameObject.GetComponent<PlayerController>().isHit(hitLength);
             collision.gameObject.GetComponent<PlayerController>().changeHealth(damage, true, transform.position, knockBack);
+            collision.gameObject.GetComponent<PlayerController>().isHit(hitLength);
         }
     }
 
@@ -198,7 +198,7 @@ public class EnemyController : MonoBehaviour
         }
     }
 
-    private void Die()
+    public void Die()
     {
         Destroy(this.gameObject);
     }
