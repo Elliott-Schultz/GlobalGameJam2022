@@ -104,8 +104,9 @@ public class PlayerController : MonoBehaviour
 
     private void Jump(InputAction.CallbackContext context)
     {
-        if (onGround)
+        if (onGround && canMove)
         {
+            playerAnimator.SetBool("OnGround", false);
             rb.velocity = new Vector2(rb.velocity.x, 0);
             rb.AddForce(transform.up * jumpForce, ForceMode2D.Impulse);
         }
@@ -131,14 +132,44 @@ public class PlayerController : MonoBehaviour
 
     private void HeavyAttack(InputAction.CallbackContext context)
     {
-        if (hitGroundAfterHit)
+        rb.velocity = Vector2.zero;
+
+        if (hitGroundAfterHit && onGround)
         {
             canSwitch = false;
             canMove = false;
 
             rb.velocity = Vector2.zero;
 
-            playerAnimator.SetTrigger("HeavyAttack");
+            playerAnimator.SetBool("HeavyAttack", true);
+        }
+        else
+        {
+            canSwitch = false;
+            playerAnimator.SetBool("AirAttack", true);
+        }
+    }
+
+    public void heavyDrop()
+    {
+        Debug.Log("Drop");
+        canMove = false;
+        rb.velocity = Vector2.zero;
+        rb.AddForce(new Vector2(0, 2 * -jumpForce), ForceMode2D.Impulse);
+    }
+
+    public void heavyDash()
+    {
+        Debug.Log("Dash");
+        canMove = false;
+        rb.velocity = Vector2.zero;
+        if (facingRight)
+        {
+            rb.AddForce(new Vector2(2 * jumpForce, 0), ForceMode2D.Impulse);
+        }
+        else
+        {
+            rb.AddForce(new Vector2( 2 * -jumpForce, 0), ForceMode2D.Impulse);
         }
     }
 
@@ -210,6 +241,7 @@ public class PlayerController : MonoBehaviour
     {
         if(collision.gameObject.tag == "Ground")
         {
+            playerAnimator.SetBool("OnGround", true);
             if (!hitGroundAfterHit)
             {
                 canSwitch = true;
@@ -253,6 +285,9 @@ public class PlayerController : MonoBehaviour
     {
         if (isDamage)
         {
+            playerAnimator.SetBool("HeavyAttack", false);
+            playerAnimator.SetBool("AirAttack", false);
+
             health -= changeBy;
             if (health <= 0)
             {
@@ -333,6 +368,9 @@ public class PlayerController : MonoBehaviour
 
     public void CanMove()
     {
+        playerAnimator.SetBool("HeavyAttack", false);
+        playerAnimator.SetBool("AirAttack", false);
+
         canMove = true;
         canSwitch = true;
     }

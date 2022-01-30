@@ -7,7 +7,7 @@ public class HitBoxAttack : MonoBehaviour
     public int damage;
     public bool didDamage = false;
     public float knockBack;
-    public float hitLength;
+    public float hitLength = 0.1f;
 
     private void OnEnable()
     {
@@ -26,7 +26,7 @@ public class HitBoxAttack : MonoBehaviour
             if(!didDamage)
             {
                 didDamage = true;
-                collision.gameObject.GetComponent<EnemyController>().hit(damage, transform.position, knockBack, hitLength);
+                collision.gameObject.GetComponent<EnemyController>().hit(damage, gameObject.transform.parent.position, knockBack, hitLength);
             }
         }
     }

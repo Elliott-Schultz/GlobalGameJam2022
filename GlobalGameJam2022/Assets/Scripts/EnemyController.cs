@@ -19,6 +19,7 @@ public class EnemyController : MonoBehaviour
     public bool facingRight;
 
     public float gotHit;
+    private bool canDoDamage = true;
     public bool canMove = true;
     private Rigidbody2D rb;
     private bool hitFromRight;
@@ -38,6 +39,7 @@ public class EnemyController : MonoBehaviour
     {
         if (gotHit <= 0 && canMove)
         {
+            canDoDamage = true;
             if (!hitSomething)
             {
                 if (transform.position.x >= originalPosition.x + walkingRange)
@@ -135,7 +137,7 @@ public class EnemyController : MonoBehaviour
 
     private void OnCollisionEnter2D(Collision2D collision)
     {
-        if(collision.gameObject.tag == "Player")
+        if(collision.gameObject.tag == "Player" && canDoDamage)
         {
             hitSomething = true;
             hitToRight = collision.gameObject.transform.position.x > transform.position.x;
@@ -174,6 +176,7 @@ public class EnemyController : MonoBehaviour
 
     public void hit(int damage, Vector2 positionOfDamageSource, float knockBack, float hitLength)
     {
+        canDoDamage = false;
         health -= damage;
         if (health <= 0)
         {
